@@ -28,7 +28,7 @@ Our preprint is now available on medRxiv [here](https://www.medrxiv.org/content/
   sudo apt install libglib2.0-dev
   ```
 
-  * clustalw2 (Ubuntu install command below)
+* clustalw2 (Ubuntu install command below)
   ```
   sudo apt install clustalw2
   ```
