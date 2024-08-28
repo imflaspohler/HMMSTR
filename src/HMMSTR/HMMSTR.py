@@ -915,10 +915,15 @@ def main():
             generate_consensus(read_assignments, sample_file, output_folder, targets=motif_targets)
 
             # Define input and output for motifscope
-            input_fasta = os.path.join(output_folder, "consensus_sequence_file.fa")
+            # input_fasta = os.path.join(output_folder, "consensus_sequence_file.fa")
+            print("output_folder_1", output_folder)
 
             # Run motifscope processing
-            # os.chdir(output_folder)
+            os.chdir(output_folder)
+            output_folder = os.getcwd()
+            input_fasta = os.path.join(output_folder, "consensus_sequence_file.fa")
+
+            print(output_folder)
             process_and_run_motifscope(motif_script, input_fasta, output_folder, motif_data, targets=motif_targets)
 
             # Generate plots

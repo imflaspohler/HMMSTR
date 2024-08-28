@@ -2,14 +2,16 @@ targets_tsv
 /data/projects/nanopore/RepeatExpansion/inputs/input_sheets/panel_inputs/all_panel_inputs_052124.tsv
 test_install
 /home/imf/HMMSTR_old/HG02979/HG02979_panel_loci.fastq.gz
---max_peaks 3
+--max_peaks 2
 --cpus 44
 --flanking_size 100
 --mode map-ont
---mapq_cutoff 30
+--mapq_cutoff 60
 --peakcalling_method auto
 --kernel gaussian
 --call_width 0.95
 --resample_size 100
+--discard_outliers
 --filter_quantile 0.25
 --motif_comp
+--motif_targets ['SCA27B_CCCC']

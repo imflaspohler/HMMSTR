@@ -20,26 +20,28 @@ def load_tandem_repeats_info(tandem_repeats_info_file, target):
     Extract tandem repeat information from the TSV file output by HMMSTR.
     """
     tandem_repeats_info = []
+    haplotypes = set()
     with open(tandem_repeats_info_file, 'r') as file:
         reader = csv.DictReader(file, delimiter='\t')
         for row in reader:
-            if row['name'] == target:
+            if row['name'] == target and row['outlier'] != "True":
                 haplotype = row['cluster_assignments']
-                if haplotype in ['1', '1.0']:
-                    haplotype = '1'
-                elif haplotype in ['2', '2.0']:
-                    haplotype = '2'
+                try:
+                    haplotype = haplotype.split(".")[0]
+                except ValueError:
+                    continue  
+                haplotypes.add(haplotype)
                 tandem_repeats_info.append({
                     "seq_id": row['read_id'],
                     "align_start": int(row['align_start']),
                     "align_end": int(row['align_end']),
                     "strand": row['strand'],
-                    "haplotype": haplotype,
+                    "haplotype": str(haplotype),  
                     "repeat_start": int(row['repeat_start']),
                     "repeat_end": int(row['repeat_end']),
-                    "outlier": row['outlier'] == "True"
+                    # "outlier": row['outlier'] == "True"
                 })
-    return tandem_repeats_info
+    return tandem_repeats_info, list(haplotypes)
 
 def extract_tandem_repeats(read_assignments, sample_file, output_folder, target):
     """
@@ -50,56 +52,43 @@ def extract_tandem_repeats(read_assignments, sample_file, output_folder, target)
         
     print(f"Loaded {len(sequence_dict)} sequences from {sample_file}")
 
-    output_fasta_file_1 = os.path.join(output_folder, f"{target}_H1.fa")
-    output_fasta_file_2 = os.path.join(output_folder, f"{target}_H2.fa")
+    tandem_repeats_info, haplotypes = load_tandem_repeats_info(read_assignments, target)
+    print(f"Processing target {target} with {len(tandem_repeats_info)} tandem repeats")
+    
+    haplotype_files = {}
+    for haplotype in haplotypes:
+        haplotype_file = os.path.join(output_folder, f"{target}_H{haplotype}.fa")
+        haplotype_files[haplotype] = open(haplotype_file, 'w')
 
-    with open(output_fasta_file_1, 'w') as output_1:
-        tandem_repeats_info = load_tandem_repeats_info(read_assignments, target)
-        
-        print(f"Processing target {target} with {len(tandem_repeats_info)} tandem repeats")
+    # Calculate coverage for each haplotype using Counter
+    haplotype_counts = Counter(info['haplotype'] for info in tandem_repeats_info if info['haplotype'] in haplotypes)
+    # print(haplotype_counts)
+    
+    for repeat_info in tandem_repeats_info:
+        seq_id = repeat_info["seq_id"]
+        if seq_id in sequence_dict:
+            # if repeat_info["outlier"]:
+            #     continue
+            align_sequence = sequence_dict[seq_id][repeat_info["align_start"]:repeat_info["align_end"]]
 
-        # Calculate coverage for each haplotype using Counter
-        haplotype_counts = Counter(info['haplotype'] for info in tandem_repeats_info if info['haplotype'] in ['1', '2'])
-        coverage_H1 = haplotype_counts.get('1', 0)
-        coverage_H2 = haplotype_counts.get('2', 0)
-        
-        print(f"Coverage for Haplotype 1: {coverage_H1}")
-        print(f"Coverage for Haplotype 2: {coverage_H2}")
+            repeat_start = repeat_info['repeat_start'] - repeat_info["align_start"] 
+            repeat_end = repeat_start + (repeat_info["repeat_end"] - repeat_info['repeat_start'])
 
-        hap2_exists = coverage_H2 > 0
-        print(f"Haplotype 2 exists: {hap2_exists}")
+            if repeat_info["strand"] == "reverse":
+                align_sequence = mappy.revcomp(align_sequence)
+                seq_length = len(align_sequence)
+                repeat_start, repeat_end = seq_length - repeat_end, seq_length - repeat_start
 
-        if hap2_exists:
-            output_2 = open(output_fasta_file_2, 'w')
-        
-        for repeat_info in tandem_repeats_info:
-            seq_id = repeat_info["seq_id"]
-            if seq_id in sequence_dict:
-                if repeat_info["outlier"]:
-                    continue
-                align_sequence = sequence_dict[seq_id][repeat_info["align_start"]:repeat_info["align_end"]]
+            description = f"repeat_start={repeat_start} repeat_end={repeat_end} coverage={haplotype_counts.get(repeat_info['haplotype'], 0)}"
 
-                repeat_start = repeat_info['repeat_start']-repeat_info["align_start"] 
-                repeat_end = repeat_start + (repeat_info["repeat_end"]-repeat_info['repeat_start'])
+            new_record = SeqIO.SeqRecord(Seq(align_sequence), id=seq_id, description=description)
 
-                if repeat_info["strand"] == "reverse":
-                    align_sequence = mappy.revcomp(align_sequence)
-                    seq_length = len(align_sequence)
-                    repeat_start, repeat_end = seq_length - repeat_end, seq_length - repeat_start
+            if repeat_info["haplotype"] in haplotypes:
+                SeqIO.write(new_record, haplotype_files[repeat_info["haplotype"]], "fasta")
+    
+    for file in haplotype_files.values():
+        file.close()
 
-                description = f"repeat_start={repeat_start} repeat_end={repeat_end} coverage={coverage_H1 if repeat_info['haplotype'] == '1' else coverage_H2}"
-
-                new_record = SeqIO.SeqRecord(Seq(align_sequence), id=seq_id, description=description)
-
-                if repeat_info["haplotype"] == "":
-                    continue
-                if repeat_info["haplotype"] in ["1", "1.0"]:
-                    SeqIO.write(new_record, output_1, "fasta")
-                elif hap2_exists and repeat_info["haplotype"] in ["2", "2.0"]:
-                    SeqIO.write(new_record, output_2, "fasta")
-        
-        if hap2_exists:
-            output_2.close()
 
 def update_repeat_positions(msa, repeat_positions):
     """
@@ -198,60 +187,39 @@ def generate_consensus(read_assignments, sample_file, output_folder, targets="al
 
     for target in targets:
         extract_tandem_repeats(read_assignments, sample_file, output_folder, target)
-        target_H1 = os.path.join(output_folder, f"{target}_H1.fa")
-        target_H2 = os.path.join(output_folder, f"{target}_H2.fa")
-        
+
+        # Load the unique haplotypes for each target
+        _, haplotypes = load_tandem_repeats_info(read_assignments, target)
+
         consensus_sequences = []
 
-        if os.path.exists(target_H1):
-            hap1_sequences = list(SeqIO.parse(target_H1, "fasta"))
-            if len(hap1_sequences) == 1:
-                for rec in hap1_sequences:
-                    id = rec.description.split()[0]
-                    desc_dict = {item.split('=')[0]: int(item.split('=')[1]) for item in rec.description.split() if '=' in item}
-                consensus_H1 = hap1_sequences[0].seq
-                consensus_H1 = consensus_H1[desc_dict['repeat_start']:desc_dict['repeat_end']]
-            else:
-                repeat_positions = {}
-                for rec in hap1_sequences:
-                    id = rec.description.split()[0]
-                    desc_dict = {item.split('=')[0]: int(item.split('=')[1]) for item in rec.description.split() if '=' in item}
-                    repeat_positions[id] = (desc_dict['repeat_start'], desc_dict['repeat_end'])
-                                             
-                clustalw_command_1 = f"{clustalw_path} -INFILE={target_H1} -gapopen={gap_open} -gapext={gap_extension}"
-                subprocess.run(clustalw_command_1, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                alignment_file_1 = target_H1.replace(".fa", ".aln")
-                alignment_1 = AlignIO.read(alignment_file_1, "clustal")
-                msa_1 = MultipleSeqAlignment(alignment_1)
-                updated_positions_1 = update_repeat_positions(msa_1, repeat_positions)
-                consensus_H1 = concensus_gen(msa_1, updated_positions_1, 0.7)
-                coverage = desc_dict['coverage']
-            consensus_sequences.append((f">{target}.H1.{coverage}", str(consensus_H1)))
+        for haplotype in haplotypes:
+            target_haplotype_file = os.path.join(output_folder, f"{target}_H{haplotype}.fa")
 
-        if os.path.exists(target_H2):
-            hap2_sequences = list(SeqIO.parse(target_H2, "fasta"))
-            if len(hap2_sequences) == 1:
-                for rec in hap1_sequences:
-                    id = rec.description.split()[0]
-                    desc_dict = {item.split('=')[0]: int(item.split('=')[1]) for item in rec.description.split() if '=' in item}
-                consensus_H2 = hap1_sequences[0].seq
-                consensus_H2 = consensus_H2[desc_dict['repeat_start']:desc_dict['repeat_end']]
-            else:
-                repeat_positions = {}
-                for rec in hap2_sequences:
-                    id = rec.description.split()[0]
-                    desc_dict = {item.split('=')[0]: int(item.split('=')[1]) for item in rec.description.split() if '=' in item}
-                    repeat_positions[id] = (desc_dict['repeat_start'], desc_dict['repeat_end'])
-
-                clustalw_command_2 = f"{clustalw_path} -INFILE={target_H2} -gapopen={gap_open} -gapext={gap_extension}"
-                subprocess.run(clustalw_command_2, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                alignment_file_2 = target_H2.replace(".fa", ".aln")
-                alignment_2 = AlignIO.read(alignment_file_2, "clustal")
-                msa_2 = MultipleSeqAlignment(alignment_2)
-                updated_positions_2 = update_repeat_positions(msa_2, repeat_positions)
-                consensus_H2 = concensus_gen(msa_2, updated_positions_2, 0.7)
-                coverage = desc_dict['coverage']
-                consensus_sequences.append((f">{target}.H2.{coverage}", str(consensus_H2)))
+            if os.path.exists(target_haplotype_file):
+                hap_sequences = list(SeqIO.parse(target_haplotype_file, "fasta"))
+                if len(hap_sequences) == 1:
+                    for rec in hap_sequences:
+                        id = rec.description.split()[0]
+                        desc_dict = {item.split('=')[0]: int(item.split('=')[1]) for item in rec.description.split() if '=' in item}
+                    consensus_hap = hap_sequences[0].seq
+                    consensus_hap = consensus_hap[desc_dict['repeat_start']:desc_dict['repeat_end']]
+                else:
+                    repeat_positions = {}
+                    for rec in hap_sequences:
+                        id = rec.description.split()[0]
+                        desc_dict = {item.split('=')[0]: int(item.split('=')[1]) for item in rec.description.split() if '=' in item}
+                        repeat_positions[id] = (desc_dict['repeat_start'], desc_dict['repeat_end'])
+                                                 
+                    clustalw_command = f"{clustalw_path} -INFILE={target_haplotype_file} -gapopen={gap_open} -gapext={gap_extension}"
+                    subprocess.run(clustalw_command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    alignment_file = target_haplotype_file.replace(".fa", ".aln")
+                    alignment = AlignIO.read(alignment_file, "clustal")
+                    msa = MultipleSeqAlignment(alignment)
+                    updated_positions = update_repeat_positions(msa, repeat_positions)
+                    consensus_hap = concensus_gen(msa, updated_positions, 0.7)
+                    coverage = desc_dict['coverage']
+                consensus_sequences.append((f">{target}.H{haplotype}.{coverage}", str(consensus_hap)))
 
         consensus_output = os.path.join(output_folder, "consensus_sequence_file.fa")
         with open(consensus_output, 'a') as file:
@@ -259,13 +227,9 @@ def generate_consensus(read_assignments, sample_file, output_folder, targets="al
                 file.write(f"{header}\n{sequence}\n")
 
         # Clean up intermediate files
-        files_to_delete = [
-            target_H1,
-            target_H2,
-            target_H1.replace(".fa", ".aln"),
-            target_H2.replace(".fa", ".aln"),
-            target_H1.replace(".fa", ".dnd"),
-            target_H2.replace(".fa", ".dnd")]
+        files_to_delete = [os.path.join(output_folder, f"{target}_H{haplotype}.fa") for haplotype in haplotypes]
+        files_to_delete += [file.replace(".fa", ".aln") for file in files_to_delete]
+        files_to_delete += [file.replace(".fa", ".dnd") for file in files_to_delete]
 
         for file_path in files_to_delete:
             if os.path.exists(file_path):
@@ -319,32 +283,24 @@ def process_and_run_motifscope(motif_script, input_fasta, output_dir, motif_data
                 for header, seq in target_sequences.items():
                     fasta_file.write(f"{header}\n{seq}\n")
 
-            #Determine the command based on the number of haplotypes
-            if len(target_sequences) == 1:
-                # Create the motifscope command
+            # Dynamically construct the motifscope command based on the number of haplotypes
+            num_haplotypes = len(set(header.split('.H')[1] for header in target_sequences.keys()))
+            if num_haplotypes > 0:
                 motifscope_command = f"""
                 python {motif_script} --sequence-type reads -i {target_fasta_file} -mink 2 -maxk {max_kmer} -m True -motif {motif_file}
                 """
+                # Run motifscope command
+                process = subprocess.run(motifscope_command, shell=True, executable='/bin/bash') 
 
-            elif len(target_sequences) == 2:
-                # Create the motifscope command
-                motifscope_command = f"""
-                python {motif_script} --sequence-type reads -i {target_fasta_file} -mink 2 -maxk {max_kmer} -m True -motif {motif_file}
-                """
+                # Delete the motif file and temporary fasta file after running motifscope
+                os.remove(motif_file)
+                os.remove(target_fasta_file)
 
-            # Run motifscope command
-            process = subprocess.run(motifscope_command, shell=True, executable='/bin/bash') 
-               
-            # Delete the motif file and temporary fasta file after running motifscope
-            os.remove(motif_file)
-            os.remove(target_fasta_file)
-
-            deactivate_command = """
-            source /home/imf/miniconda3/etc/profile.d/conda.sh && \
-            conda deactivate
-            """
-            subprocess.run(deactivate_command, shell=True, executable='/bin/bash')
-            print("ran motifscope correctly")
+                print(f"Ran motifscope correctly for target {target_name} with {num_haplotypes} haplotypes.")
+            else:
+                print(f"No haplotypes found for target {target_name}. Skipping.")
+        else:
+            print(f"No sequences found for target {target_name}. Skipping.")
 
 
 def graphing(file_path, targets):
@@ -383,30 +339,33 @@ def graphing(file_path, targets):
     palette = [color for color in palette if color != 'grey']  # Removing grey as it is used to indicate non-repeat sequence
     colors = {motif: color for motif, color in zip(unique_motifs, palette)}
 
-    # Creating the plot
+    # # Creating the plot
     bar_height = 0.4  # Set the height of the bars
-    fig, ax = plt.subplots(figsize=(16, 3)) 
+    if len(sorted_haplotypes) == 1:
+        height = (3+len(sorted_haplotypes))/len(sorted_haplotypes)
+        fig, ax = plt.subplots(figsize=(16, 2.5))  
+    else:
+        fig, ax = plt.subplots(figsize=(16, 3 + len(sorted_haplotypes)))
 
     # Adjust genome length display for sequences longer than 1000
     max_length = 0
-    for (haplotype, motifs) in enumerate(sorted_haplotypes.values()):
+    for haplotype, motifs in sorted_haplotypes.items():
         max_length += sum(len(motif) for motif in motifs)
 
     if max_length > 1000:
         genome_length = 40
     else:
         genome_length = 3
-
+    
     max_length = 0  # Track the maximum length of the haplotype bars for setting x-axis limits
-    motif_start_offset = int(genome_length + bar_height / 2)  # Convert to integer
-
+    motif_start_offset = int(genome_length + bar_height / 2)
 
     for i, (haplotype, motifs) in enumerate(sorted_haplotypes.items()):
         start = 0
 
         # Draw left semicircle
         left_semi = mpatches.Wedge(
-            (start, i), bar_height / 2, 90, 270, 
+            (start, i), bar_height / 2, 90, 270,
             linewidth=1, edgecolor='grey', facecolor='grey'
         )
         ax.add_patch(left_semi)
@@ -417,13 +376,13 @@ def graphing(file_path, targets):
             linewidth=1, edgecolor='grey', facecolor='grey'
         )
         ax.add_patch(left_rect)
-        start += 3
+        start += genome_length
 
         motif_length = sum(len(motif) for motif in motifs)
 
         for motif in motifs:
             color = colors[motif]
-            ax.barh(i, len(motif), height=bar_height, left=start, color=color, edgecolor='grey', linewidth=0.5) 
+            ax.barh(i, len(motif), height=bar_height, left=start, color=color, edgecolor='grey', linewidth=0.5)
             start += len(motif)
         
         # Draw right rectangle 
@@ -432,17 +391,17 @@ def graphing(file_path, targets):
             linewidth=1, edgecolor='grey', facecolor='grey'
         )
         ax.add_patch(right_rect)
-        start += 3
+        start += genome_length
         
         # Draw right semicircle
         right_semi = mpatches.Wedge(
-            (start, i), bar_height / 2, 270, 90, 
+            (start, i), bar_height / 2, 270, 90,
             linewidth=1, edgecolor='grey', facecolor='grey'
         )
         ax.add_patch(right_semi)
 
         # Add shine effect across the entire bar including genome sections
-        shine_length = motif_length + genome_length*2  
+        shine_length = motif_length + genome_length * 2
         shine_rect = mpatches.Rectangle(
             (0, i + bar_height / 40), shine_length, bar_height / 3.5,
             linewidth=0, edgecolor='none', facecolor='white', alpha=0.2
@@ -454,17 +413,14 @@ def graphing(file_path, targets):
             max_length = start
 
     # Setting plot labels and grid
+    ax.set_yticks(range(len(sorted_haplotypes)))
     if len(sorted_haplotypes) == 1:
-        ax.set_yticks([0])
-        labels = [f"coverage: {hap.split('.')[2]}  {hap.split('.')[1]}" for hap in sorted_haplotypes.keys()]
-        ax.set_yticklabels(labels)
-        # ax.set_yticklabels(f"coverage: {hap.split('.')[2]}" for hap in sorted_haplotypes.keys() [list(sorted_haplotypes.keys())[0].split(".")[1]])
-        ax.set_ylim(-1, 1)
+        labels = [f"coverage: {hap.split('.')[2]}  H1" for hap in sorted_haplotypes.keys()]
     else:
-        ax.set_yticks(range(len(sorted_haplotypes)))
         labels = [f"coverage: {hap.split('.')[2]}  {hap.split('.')[1]}" for hap in sorted_haplotypes.keys()]
-        ax.set_yticklabels(labels)
-        ax.set_ylim(-0.5, 1.5)
+
+    ax.set_yticklabels(labels)
+    ax.set_ylim(-0.5, len(sorted_haplotypes) - 0.5)
 
     # Adjust x-axis to start from -50 for sequences longer than 1000
     if max_length + motif_start_offset > 1000:
@@ -512,7 +468,6 @@ def graphing(file_path, targets):
     patches_legend = [mpatches.Patch(color=color, label=label) for label, color in colors.items()]
     ax.legend(handles=patches_legend, title='Motifs', bbox_to_anchor=(0.5, -0.5), loc='upper center', ncol=5)
     plt.subplots_adjust(bottom=0.6)
-
 
     # Save the figure
     if len(targets) == 1:
