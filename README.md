@@ -21,7 +21,6 @@ Our preprint is now available on medRxiv [here](https://www.medrxiv.org/content/
 * seaborn
 * importlib-resources
 * mappy
-* motifscope: A tool for motif detection and analysis (https://github.com/holstegelab/MotifScope/)
 
 * glib-2 (Ubuntu install command below)
   ```
@@ -141,7 +140,8 @@ Optionally, the user may also input all options as a text file which each input 
 
 ### Advanced Options
 #### Motif Composition Plotting Options
-Optional plotting of motif compositon for targets on the repeat expansion panel of 64 disease associatd tandem repeats. 
+Optional plotting of motif compositon for targets on the repeat expansion panel of 64 disease associatd tandem repeats. Motif breakdown of the consensus sequence for each target is performed by motifscope, a tool for motif detection and analysis (https://github.com/holstegelab/MotifScope/).
+ 
 |  Argument &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;| Description |
 |---|---|
 |--motif_comp| Output consensus sequences for each target by haplotype and creates a visual plot of sequence breakdown by motif (default: not run)|
