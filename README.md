@@ -141,6 +141,8 @@ Optionally, the user may also input all options as a text file which each input 
 ### Advanced Options
 #### Motif Composition Plotting Options
 Optional plotting of motif compositon for targets on the repeat expansion panel (64 disease associated tandem repeats). Motif breakdown of the consensus sequence for each target is performed by motifscope, a tool for motif detection and analysis (https://github.com/holstegelab/MotifScope/).
+
+Currently not compatible with bam input.
  
 |  Argument &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;| Description |
 |---|---|
