@@ -139,13 +139,14 @@ Optionally, the user may also input all options as a text file which each input 
 <details>
 <summary> Advanced Options </summary>
 
+### Advanced Options
 #### Motif Composition Plotting Options
+Optional plotting of motif compositon for targets on the repeat expansion panel of 64 disease associatd tandem repeats. 
 |  Argument &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;| Description |
 |---|---|
 |--motif_comp| Output consensus sequences for each target by haplotype and creates a visual plot of sequence breakdown by motif (default: not run)|
-|--targets| Targets of interest for motif composition plotting - inserted as a list of targets (ex. ["SCA27B", "HD", etc]) (default: all targets)|
-  
-### Advanced Options
+|--motif_targets| Targets of interest for motif composition plotting - inserted as a comma sepearated list of targets (ex. SCA27B,HD,FAME7) (default: all targets)|
+
 #### Custom Model Parameter Options
 Optional tsv inputs to set custom model parameters.
 |  Argument &nbsp; &nbsp; &nbsp; | Description |

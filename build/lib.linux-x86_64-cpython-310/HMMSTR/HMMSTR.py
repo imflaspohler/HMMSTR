@@ -675,9 +675,11 @@ def main():
     parser.add_argument("--hmm_pre", type=str,help="Prefix for files produced by build function, use if running the same targets across multiple input files. Only compatible with --save_intermediates option from previous run")
 
 
-    # New arguments for motif composition analysis
+    # Arguments for motif composition analysis
+    def list_of_strings(arg):
+        return arg.split(',')
     parser.add_argument("--motif_comp", action='store_true', help="Flag to run motif composition analysis")
-    parser.add_argument("--motif_targets", type=str, nargs='+', help="List of targets for motif composition")
+    parser.add_argument("--motif_targets", type=list_of_strings, help="List of targets for motif composition")
 
     #check input to see if file or command line was used
     if len(sys.argv) != 2:
@@ -905,25 +907,20 @@ def main():
         else:
             motif_data = files('motif_comp.data').joinpath('motif_info.tsv')
             motif_script = files('motif_comp.data').joinpath('motifscope.py')
-            print(motif_script)
             read_assignments = os.path.join(f"{args.out}_read_assignments.tsv")
             output_folder = f"{args.out}_motif_comp"
             os.makedirs(output_folder, exist_ok=True)
             motif_targets = args.motif_targets if args.motif_targets else "all"
+            print(motif_targets)
 
             # Generate consensus sequences
             generate_consensus(read_assignments, sample_file, output_folder, targets=motif_targets)
-
-            # Define input and output for motifscope
-            # input_fasta = os.path.join(output_folder, "consensus_sequence_file.fa")
-            print("output_folder_1", output_folder)
 
             # Run motifscope processing
             os.chdir(output_folder)
             output_folder = os.getcwd()
             input_fasta = os.path.join(output_folder, "consensus_sequence_file.fa")
 
-            print(output_folder)
             process_and_run_motifscope(motif_script, input_fasta, output_folder, motif_data, targets=motif_targets)
 
             # Generate plots

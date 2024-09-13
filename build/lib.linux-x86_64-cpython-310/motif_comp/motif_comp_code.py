@@ -18,9 +18,18 @@ import mappy
 def load_tandem_repeats_info(tandem_repeats_info_file, target):
     """
     Extract tandem repeat information from the TSV file output by HMMSTR.
+
+    Parameters:
+    tandem_repeats_info_file (str): Path to the HMMSTR output TSV file containing tandem repeat information.
+    target (str): The target name to filter the rows in the TSV file.
+
+    Returns:
+    tandem_repeats_info: A list of dictionaries, each containing information about a tandem repeat.
+    set of haplotypes: A set of unique haplotypes found in the tandem repeats.
     """
+   
     tandem_repeats_info = []
-    haplotypes = set()
+    haplotypes = set() # Set to store unique haplotypes
     with open(tandem_repeats_info_file, 'r') as file:
         reader = csv.DictReader(file, delimiter='\t')
         for row in reader:
@@ -47,6 +56,15 @@ def extract_tandem_repeats(read_assignments, sample_file, output_folder, target)
     """
     Extract the tandem repeats sequence for a specified target using information 
     from the read assignments file from HMMSTR.
+
+    Parameters:
+    read_assignments (str): Path to the read assignments file.
+    sample_file (str): Path to the sample FASTA file.
+    output_folder (str): Directory where output files will be saved.
+    target (str): The target for which tandem repeats are to be extracted.
+
+    Returns:
+    None
     """
     sequence_dict = {name: seq for name, seq, _ in mappy.fastx_read(sample_file)}
         
@@ -93,6 +111,13 @@ def extract_tandem_repeats(read_assignments, sample_file, output_folder, target)
 def update_repeat_positions(msa, repeat_positions):
     """
     Update repeat positions to account for gaps introduced during alignment.
+
+    Parameters:
+    msa (MultipleSeqAlignment): The multiple sequence alignment object.
+    repeat_positions (dict): A dictionary mapping sequence IDs to their repeat start and end positions.
+
+    Returns:
+    dict: A dictionary with updated repeat positions accounting for gaps introduced during alignment.
     """
     updated_positions = {}
 
@@ -140,7 +165,15 @@ def find_matching_key(dictionary, search_string):
 
 def concensus_gen(msa, repeat_positions, threshold=0.7):
     """
-    Calculate the consensus sequence considering only the repeat region.
+    Generate a consensus sequence from a multiple sequence alignment (MSA).
+
+    Parameters:
+    msa (MultipleSeqAlignment): The multiple sequence alignment object.
+    repeat_positions (dict): A dictionary mapping sequence IDs to their repeat start and end positions.
+    threshold (float): The threshold for consensus generation.
+
+    Returns:
+    list: A list representing the consensus sequence.
     """
     consensus = ""
     # Extract repeat regions from each sequence in the alignment
@@ -180,12 +213,26 @@ def concensus_gen(msa, repeat_positions, threshold=0.7):
 def generate_consensus(read_assignments, sample_file, output_folder, targets="all", clustalw_path='clustalw2', gap_open=8, gap_extension=0.5):
     """
     Align reads using ClustalW and build consensus sequences for each haplotype.
+
+    Parameters:
+    read_assignments (str): Path to the TSV file containing read assignments.
+    sample_file (str): Path to the sample file (FASTA/FASTQ).
+    output_folder (str): Path to the output folder where results will be saved.
+    targets (str or list): Target names to process. Default is "all".
+    clustalw_path (str): Path to the ClustalW executable. Default is 'clustalw2'.
+    gap_open (float): Gap opening penalty for ClustalW. Default is 8.
+    gap_extension (float): Gap extension penalty for ClustalW. Default is 0.5.
+
+    Returns:
+    None but generates .fa file with all consensus sequences. 
     """
     read_assignments_df = pd.read_csv(f"{read_assignments}", sep="\t")
+    # If targets is "all", get all unique target names from the DataFrame
     if targets == "all":
         targets = read_assignments_df['name'].unique()
 
-    for target in targets:
+    for target in targets:        
+        # Extract tandem repeats for the current target using the read assignments
         extract_tandem_repeats(read_assignments, sample_file, output_folder, target)
 
         # Load the unique haplotypes for each target
@@ -193,11 +240,14 @@ def generate_consensus(read_assignments, sample_file, output_folder, targets="al
 
         consensus_sequences = []
 
+        # Iterate over each haplotype for the current target
         for haplotype in haplotypes:
             target_haplotype_file = os.path.join(output_folder, f"{target}_H{haplotype}.fa")
 
             if os.path.exists(target_haplotype_file):
                 hap_sequences = list(SeqIO.parse(target_haplotype_file, "fasta"))
+
+                # If there is only one sequence, extract the repeat region directly
                 if len(hap_sequences) == 1:
                     for rec in hap_sequences:
                         id = rec.description.split()[0]
@@ -205,23 +255,36 @@ def generate_consensus(read_assignments, sample_file, output_folder, targets="al
                     consensus_hap = hap_sequences[0].seq
                     consensus_hap = consensus_hap[desc_dict['repeat_start']:desc_dict['repeat_end']]
                 else:
+                    # If there are multiple sequences, align them and extract the consensus
                     repeat_positions = {}
                     for rec in hap_sequences:
                         id = rec.description.split()[0]
                         desc_dict = {item.split('=')[0]: int(item.split('=')[1]) for item in rec.description.split() if '=' in item}
                         repeat_positions[id] = (desc_dict['repeat_start'], desc_dict['repeat_end'])
-                                                 
+
+                    # Run ClustalW to align the sequences         
                     clustalw_command = f"{clustalw_path} -INFILE={target_haplotype_file} -gapopen={gap_open} -gapext={gap_extension}"
                     subprocess.run(clustalw_command, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    
+                    # Read the alignment file
                     alignment_file = target_haplotype_file.replace(".fa", ".aln")
                     alignment = AlignIO.read(alignment_file, "clustal")
                     msa = MultipleSeqAlignment(alignment)
+
+                    # Update repeat positions based on the alignment
                     updated_positions = update_repeat_positions(msa, repeat_positions)
+
+                    # Generate the consensus sequence
                     consensus_hap = concensus_gen(msa, updated_positions, 0.7)
                     coverage = desc_dict['coverage']
-                consensus_sequences.append((f">{target}.H{haplotype}.{coverage}", str(consensus_hap)))
 
+                # Append the consensus sequence to the list
+                consensus_sequences.append((f">{target}.H{haplotype}.{coverage}", str(consensus_hap)))
+                
+        # Define the output file for consensus sequences
         consensus_output = os.path.join(output_folder, "consensus_sequence_file.fa")
+
+        # Write the consensus sequence to the final output file
         with open(consensus_output, 'a') as file:
             for header, sequence in consensus_sequences:
                 file.write(f"{header}\n{sequence}\n")
@@ -236,6 +299,19 @@ def generate_consensus(read_assignments, sample_file, output_folder, targets="al
                 os.remove(file_path)
 
 def process_and_run_motifscope(motif_script, input_fasta, output_dir, motif_data, targets):
+    """
+    Process sequences and run the motifscope tool for each target.
+
+    Parameters:
+    motif_script (str): Path to the motifscope script.
+    input_fasta (str): Path to the input FASTA file containing consensus sequences for each target.
+    output_dir (str): Directory where output files will be saved.
+    motif_data (str): Path to the TSV file containing motif information for each target.
+    targets (str or list): List of target names to process or "all" to process all targets.
+
+    Returns:
+    None but saves the motifscope output files.
+    """
     # Read the input FASTA file
     sequences = {}
     with open(input_fasta, 'r') as file:
@@ -290,7 +366,7 @@ def process_and_run_motifscope(motif_script, input_fasta, output_dir, motif_data
                 python {motif_script} --sequence-type reads -i {target_fasta_file} -mink 2 -maxk {max_kmer} -m True -motif {motif_file}
                 """
                 # Run motifscope command
-                process = subprocess.run(motifscope_command, shell=True, executable='/bin/bash') 
+                process = subprocess.run(motifscope_command, shell=True, executable='/bin/bash', stdout=subprocess.DEVNULL) 
 
                 # Delete the motif file and temporary fasta file after running motifscope
                 os.remove(motif_file)
@@ -304,6 +380,16 @@ def process_and_run_motifscope(motif_script, input_fasta, output_dir, motif_data
 
 
 def graphing(file_path, targets):
+    """
+    Generate a graphical representation of the motif composition for the specified targets.
+
+    Parameters:
+    file_path (str): Path to the motifscope output file.
+    targets (str or list): List of target names to process or "all" to process all targets.
+
+    Returns:
+    None but saves the plot as a PNG file.
+    """
     # Parsing the motifscope output file
     haplotypes = {}
     with open(file_path, 'r') as file:
@@ -339,8 +425,8 @@ def graphing(file_path, targets):
     palette = [color for color in palette if color != 'grey']  # Removing grey as it is used to indicate non-repeat sequence
     colors = {motif: color for motif, color in zip(unique_motifs, palette)}
 
-    # # Creating the plot
-    bar_height = 0.4  # Set the height of the bars
+    # Creating the plot
+    bar_height = 0.4  
     if len(sorted_haplotypes) == 1:
         height = (3+len(sorted_haplotypes))/len(sorted_haplotypes)
         fig, ax = plt.subplots(figsize=(16, 2.5))  
