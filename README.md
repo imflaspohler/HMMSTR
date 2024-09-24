@@ -140,7 +140,7 @@ Optionally, the user may also input all options as a text file which each input 
 
 ### Advanced Options
 #### Motif Composition Plotting Options
-Optional plotting of motif compositon for targets on the repeat expansion panel (64 disease associated tandem repeats). Motif breakdown of the consensus sequence for each target is performed by motifscope, a tool for motif detection and analysis (https://github.com/holstegelab/MotifScope/).
+**Currently in beta testing.**  Optional plotting of motif compositon for targets on the repeat expansion panel (64 disease associated tandem repeats). Motif breakdown of the consensus sequence for each target is performed by motifscope, a tool for motif detection and analysis (https://github.com/holstegelab/MotifScope/). See Example Use Cases section for detailed instructions for use with the repeat expansion panel. 
 
 Currently not compatible with bam input.
  
@@ -148,6 +148,8 @@ Currently not compatible with bam input.
 |---|---|
 |--motif_comp| Output consensus sequences for each target by haplotype and creates a visual plot of sequence breakdown by motif (default: not run)|
 |--motif_targets| Targets of interest for motif composition plotting - inserted as a comma sepearated list of targets (ex. --motif_targets SCA27B,HD,FAME7) (default: all targets)|
+|--output_plots| Output plots of motif composition over consensus sequence and coverage for each haplotype (default: not run) |
+
 
 #### Custom Model Parameter Options
 Optional tsv inputs to set custom model parameters.
@@ -285,7 +287,28 @@ hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 
 This will ensure the entire dataset is considered during genotyping. Note: this will also result in an increase of false heterozygous calls for homozygous regions. If you wish to have high accuracy for both expanded alleles and homozygotes, consider running HMMSTR with both settings on the same sequence file.
 
 If there is sufficient coverage across all alleles in the run, this is not an issue.
-   
+
+   ### Repeat Expansion Panel with Motif Composition Plotting
+
+  Consensus sequence generation and motif composition plotting is available for targets on the repeat expansion panel. Below are example use cases and run instructions. 
+
+  Run with ```--motif_comp``` and ```--output_motif_plots``` flag to run on full repeat expansion panel and generate plots for all targets. Keep stricter ```mapq_cutoff``` discussed above. 
+
+```
+hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots
+```
+  This run will produce an additonal directory with the outputs from the motif composition run. A consensus_sequence_file.fa will be generated containing all of the consensus sequences for each target on the panel with haplotype and coverage information. Motif composition plots will be generated for all targets and be saved as .png files.  
+
+**Warning**: If coverage is exceedingly low or unbalanced between haplotypes, the resulting consensus sequence and thus motif composition plots could be more prone to error. Haplotype and coverage information is provided in both the consensus_sequence_file.fa and shown next to each haplotype in the resulting plot for each target. 
+
+    Run with ```--motif_comp```, ```--output_motif_plots```, and specific targets using ```--motif_targets``` flag to run on specific targets from the repeat expansion panel and generate plots for specific targets. Keep stricter ```mapq_cutoff``` discussed above. 
+
+```
+hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots --motif_targets SCA27B_CCCC,DM2,FAME7
+```
+
+This run will produce a consensus_sequence_file.fa will be generated containing only the consensus sequences for the specified targets with haplotype and coverage information. Motif composition plots will be generated for these inputed targets and be saved as .png files.  
+
  </details>
 
  <details>
