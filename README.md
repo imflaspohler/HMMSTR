@@ -152,7 +152,7 @@ Currently not compatible with bam input.
 |---|---|
 |--motif_comp| Output consensus sequences for each target by haplotype and creates a visual plot of sequence breakdown by motif (default: not run)|
 |--motif_targets| Targets of interest for motif composition plotting - inserted as a comma sepearated list of targets (ex. --motif_targets SCA27B,HD,FAME7) (default: all targets)|
-|--output_plots| Output plots of motif composition over consensus sequence and coverage for each haplotype (default: not run) |
+|--output_motif_plots| Output plots of motif composition over consensus sequence and coverage for each target split by haplotype (default: not run) |
 
 
 #### Custom Model Parameter Options
