@@ -293,12 +293,12 @@ If there is sufficient coverage across all alleles in the run, this is not an is
 
    ### Repeat Expansion Panel with Motif Composition Plotting
 
-  Consensus sequence generation and motif composition plotting is available for targets on the repeat expansion panel. Below are example use cases and run instructions. 
+  Consensus sequence generation and motif composition plotting is available for targets on the repeat expansion panel. Below are example use cases and run instructions for out targets in ```target_tsv```. 
 
   Run with ```--motif_comp``` and ```--output_motif_plots``` flag to run on full repeat expansion panel and generate plots for all targets. Keep stricter ```mapq_cutoff``` discussed above. 
 
 ```
-hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots
+hmmstr target_tsv panel_targets_inputs/all_panel_inputs.tsv $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots
 ```
   This run will produce an additonal directory with the outputs from the motif composition run. See outputs for detailed output descriptions.  
 
@@ -307,7 +307,7 @@ hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 
   Run with ```--motif_comp```, ```--output_motif_plots```, and specific targets using ```--motif_targets``` flag to run on specific targets from the repeat expansion panel and generate plots for specific targets. Keep stricter ```mapq_cutoff``` discussed above. 
 
 ```
-hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots --motif_targets SCA27B_CCCC,DM2,FAME7
+hmmstr target_tsv panel_targets_inputs/all_panel_inputs.tsv $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots --motif_targets SCA27B_CCCC,DM2,FAME7
 ```
 
 #### Outputs
