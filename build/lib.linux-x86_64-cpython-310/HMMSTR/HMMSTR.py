@@ -680,6 +680,7 @@ def main():
         return arg.split(',')
     parser.add_argument("--motif_comp", action='store_true', help="Flag to run motif composition analysis")
     parser.add_argument("--motif_targets", type=list_of_strings, help="List of targets for motif composition")
+    parser.add_argument("--output_motif_plots", action='store_true', help="Run motif composition analysis and output motif plots")
 
     #check input to see if file or command line was used
     if len(sys.argv) != 2:
@@ -911,8 +912,8 @@ def main():
             output_folder = f"{args.out}_motif_comp"
             os.makedirs(output_folder, exist_ok=True)
             motif_targets = args.motif_targets if args.motif_targets else "all"
-            print(motif_targets)
 
+            print("Running motif composition analysis on targets: ", motif_targets)
             # Generate consensus sequences
             generate_consensus(read_assignments, sample_file, output_folder, targets=motif_targets)
 
@@ -921,21 +922,28 @@ def main():
             output_folder = os.getcwd()
             input_fasta = os.path.join(output_folder, "consensus_sequence_file.fa")
 
-            process_and_run_motifscope(motif_script, input_fasta, output_folder, motif_data, targets=motif_targets)
+            # If output plots flag run motifscope and generate plots for all targets in motif_targets
+            if args.output_motif_plots:
+                print("Generating motif composition plots...")
+                process_and_run_motifscope(motif_script, input_fasta, output_folder, motif_data, targets=motif_targets)
 
-            # Generate plots
-            for file in os.listdir(output_folder):
-                if "compressed_representation" in file:
-                    target = [file.split(".fa")[0]]
-                    input_file = os.path.join(output_folder, file)
-                    graphing(input_file, targets=target)
-                    os.remove(file)  # Clean intermediates for motif comp
-                elif "motif_in_hex" in file:
-                    os.remove(file)
-                elif "motif_to_hex" in file:
-                    os.remove(file)
-                elif "*_motifs.txt" in file:
-                    os.remove(file)
+                # Generate plots
+                for file in os.listdir(output_folder):
+                    if "compressed_representation" in file:
+                        target = [file.split(".fa")[0]]
+                        input_file = os.path.join(output_folder, file)
+                        graphing(input_file, targets=target)
+                        os.remove(file)  # Clean intermediates for motif comp
+                    elif "motif_in_hex" in file:
+                        os.remove(file)
+                    elif "motif_to_hex" in file:
+                        os.remove(file)
+                    elif "*_motifs.txt" in file:
+                        os.remove(file)
+                    elif "fa_reads" in file:
+                        os.remove(file)
+        print("Done with motif composition analysis.")
+
 
 if __name__ == "__main__":
   main()

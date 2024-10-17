@@ -68,10 +68,10 @@ def extract_tandem_repeats(read_assignments, sample_file, output_folder, target)
     """
     sequence_dict = {name: seq for name, seq, _ in mappy.fastx_read(sample_file)}
         
-    print(f"Loaded {len(sequence_dict)} sequences from {sample_file}")
+    # print(f"Loaded {len(sequence_dict)} sequences from {sample_file}")
 
     tandem_repeats_info, haplotypes = load_tandem_repeats_info(read_assignments, target)
-    print(f"Processing target {target} with {len(tandem_repeats_info)} tandem repeats")
+    # print(f"Processing target {target} with {len(tandem_repeats_info)} tandem repeats")
     
     haplotype_files = {}
     for haplotype in haplotypes:
@@ -366,13 +366,12 @@ def process_and_run_motifscope(motif_script, input_fasta, output_dir, motif_data
                 python {motif_script} --sequence-type reads -i {target_fasta_file} -mink 2 -maxk {max_kmer} -m True -motif {motif_file}
                 """
                 # Run motifscope command
-                process = subprocess.run(motifscope_command, shell=True, executable='/bin/bash', stdout=subprocess.DEVNULL) 
+                process = subprocess.run(motifscope_command, shell=True, executable='/bin/bash', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) 
 
                 # Delete the motif file and temporary fasta file after running motifscope
                 os.remove(motif_file)
                 os.remove(target_fasta_file)
 
-                print(f"Ran motifscope correctly for target {target_name} with {num_haplotypes} haplotypes.")
             else:
                 print(f"No haplotypes found for target {target_name}. Skipping.")
         else:
