@@ -311,11 +311,22 @@ hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 
 hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots --motif_targets SCA27B_CCCC,DM2,FAME7
 ```
 
-##### Outputs
+#### Outputs
 
 The following are output to a directory with suffic "motif_comp"
-1. "consensus_sequence_file.fa" : Contains the consensus sequences for the specified targets with haplotype and coverage information. 
-2. "target_motif_comp.png" (optional) : Motif composition plots by target and haplotype will be generated for specified targets. Coverage information displayed to the right of the haplotype. See example image below. 
+1. "consensus_sequence_file.fa" : This file contains consensus sequences for specified genomic targets. Each entry represents a haplotype at a given target, along with the number of reads (coverage) that supported the consensus sequence. The file format is as follows:
+  * `target`: The first part of the header line identifies the genomic target or the specific locus or region of interest.
+  * `Haplotype`: Each haplotype is labeled with H1, H2, etc., indicating different sequence variants or alleles found at the target.
+  * `Coverage`: After the haplotype information is the coverage information. Coverage represents the number of sequencing reads that supported the consensus sequence at that haplotype.
+
+This infomation is displayed in the consensus_sequence_file.fa in the form:
+```
+>Target.Haplotype.Coverage
+Consensus sequence
+```
+3. "target_motif_comp.png" (optional) : Motif composition plots by target and haplotype will be generated for specified targets. Coverage information displayed to the right of the haplotype. See example image below. 
+
+![SCA27B Motif Composition Example](images/SCA27B_CCCC_motif_comp.png)
 
  </details>
 
@@ -340,7 +351,7 @@ The following are output to a directory with suffic "motif_comp"
 7. How can I call copy number estimates from non-spanning/soft clip reads?
    - While a core requirement of the HMMSTR algorithm is detecting unique flanking sequence, you can obtain copy number estimates from soft clipped reads using HMMSTR following our methods in our [manuscript](https://www.medrxiv.org/content/10.1101/2024.05.01.24306681v1). Put briefly, you can arrange your inputs to target one flanking region and allow the second flanking region to end in the expected repeat. Note that this procedure will yield a rough estimate and we do plan to incorporate a more rigorous mode for non-spanning read estimates in future iterations.
 8. Can I use HMMSTR to recover motif composition?
-   - HMMSTR does not currently concurrently derive motif composition, however it can be used in conjunction with other motif decomposition softwares and we do so in our in-house processing pipeline. HMMSTR returns the position of the tandem repeat in each read as well as per-read allele assignments which allows for downstream analysis on the repeat sequences.
-9. I want to make my own visualizations, how can I do this from HMMSTR outputs?
+   - HMMSTR has a motif composition pipeline currently in beta testing for use on the repeat expansion panel targets. See advanced options for motif composition parameters and the repeat expansion panel with motif composition plotting in the example use cases for  example run commands and output file details. 
+10. I want to make my own visualizations, how can I do this from HMMSTR outputs?
    - All of the default visualizations are made from the outputs reported in the *_read_assignemnts.tsv file, you can use this to make your own custom figures
  </details>
