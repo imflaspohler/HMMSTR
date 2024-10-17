@@ -11,7 +11,7 @@ HMMSTR is optimized for targeted sequencing experiments and can be run with a si
 
 Our preprint is now available on medRxiv [here](https://www.medrxiv.org/content/10.1101/2024.05.01.24306681v1)
 ## Dependencies
-* Python >= 3.8.17, < 3.12
+* Python >= 3.10, < 3.12
 * colorama
 * numpy
 * pandas
@@ -27,11 +27,10 @@ Our preprint is now available on medRxiv [here](https://www.medrxiv.org/content/
   sudo apt install libglib2.0-dev
   ```
 
-* clustalw2 (Ubuntu install command below)
+* clustalw2 (Ubuntu install and conda install commands below)
   ```
   sudo apt install clustalw2
   ```
-  or
   ```
   conda install bioconda::clustalw
   ```
@@ -301,7 +300,7 @@ If there is sufficient coverage across all alleles in the run, this is not an is
 ```
 hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 --motif_comp --output_motif_plots
 ```
-  This run will produce an additonal directory with the outputs from the motif composition run. A consensus_sequence_file.fa will be generated containing all of the consensus sequences for each target on the panel with haplotype and coverage information. Motif composition plots will be generated for all targets and be saved as .png files. See outputs for detailed output description.  
+  This run will produce an additonal directory with the outputs from the motif composition run. See outputs for detailed output descriptions.  
 
 **Warning**: If coverage is exceedingly low or unbalanced between haplotypes, the resulting consensus sequence and thus motif composition plots could be more prone to error. Haplotype and coverage information is provided in both the consensus_sequence_file.fa and shown next to each haplotype in the resulting plot for each target. 
 
@@ -313,17 +312,17 @@ hmmstr coordinates $TARGET_COORDS $CHR_SIZES $REF $OUT $INFILE --mapq_cutoff 60 
 
 #### Outputs
 
-The following are output to a directory with suffic "motif_comp"
-1. "consensus_sequence_file.fa" : This file contains consensus sequences for specified genomic targets. Each entry represents a haplotype at a given target, along with the number of reads (coverage) that supported the consensus sequence. The file format is as follows:
-  * `target`: The first part of the header line identifies the genomic target or the specific locus or region of interest.
-  * `Haplotype`: Each haplotype is labeled with H1, H2, etc., indicating different sequence variants or alleles found at the target.
-  * `Coverage`: After the haplotype information is the coverage information. Coverage represents the number of sequencing reads that supported the consensus sequence at that haplotype.
-
-This infomation is displayed in the consensus_sequence_file.fa in the form:
+The following are output to a directory with "$out_motif_comp"
+1. "consensus_sequence_file.fa" : This file contains consensus sequences for specified genomic targets. Each entry represents a haplotype at a given target, along with the number of reads (coverage) that supported the consensus sequence. This infomation is displayed in the consensus_sequence_file.fa in the form:
 ```
 >Target.Haplotype.Coverage
 Consensus sequence
 ```
+
+  * `target`: The first part of the header line identifies the genomic target or the specific locus or region of interest.
+  * `Haplotype`: Each haplotype is labeled with H1, H2, etc., indicating different alleles found at the target.
+  * `Coverage`: After the haplotype information is the coverage information. Coverage represents the number of sequencing reads that supported the consensus sequence at that haplotype.
+
 3. "target_motif_comp.png" (optional) : Motif composition plots by target and haplotype will be generated for specified targets. Coverage information displayed to the right of the haplotype. See example image below. 
 
 ![SCA27B Motif Composition Example](images/SCA27B_CCCC_motif_comp.png)
